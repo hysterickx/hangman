@@ -18,10 +18,10 @@ BOX_PARAMS = {
 }
 
 ENTRY_PARAMS = {
-    "width": 300,
+    "width": 100,
     "height": 30,
     "border_width": 0,
-    "corner_radius": 40,
+    "corner_radius": 25,
     "justify": 'c',
     "font": FONT_LARGE
 }
@@ -41,6 +41,16 @@ BTN_PARAMS = {
     "width": 70,
     "height": 50,
     "corner_radius": 50,
+    "fg_color": COLOR_LIME,
+    "hover_color": COLOR_WHITE,
+    "text_color": COLOR_BLACK,
+    "font": FONT_SMALL
+}
+
+LONG_BTN_PARAMS = {
+    "width": 150,
+    "height": 30,
+    "corner_radius": 75,
     "fg_color": COLOR_LIME,
     "hover_color": COLOR_WHITE,
     "text_color": COLOR_BLACK,
@@ -77,17 +87,15 @@ STATIC_PAGES_DATA = {
 
 GAME_PAGE_DATA = {
     'labels': [
-        ('count_lbl', '', COLOR_LIME, FONT_MEDIUM, 0.7, 0.1),
+        ('count_lbl', 'Попыток осталось:\n8', COLOR_LIME, FONT_MEDIUM, 0.75, 0.3),
         ('word_lbl', '', COLOR_WHITE, FONT_LARGE, 0.5, 0.55),
-        ('comment_lbl', '', COLOR_WHITE, FONT_MEDIUM, 0.5, 0.9),
-        ('win_lbl', '⬆⬆⬆\nСлово отгадано!\nХочешь сыграть снова?', COLOR_LIME, FONT_LARGE, 0.5, 0.6),
-        ('lose_lbl', '⬆⬆⬆\nВсе попытки потрачены!\nХочешь сыграть снова?', COLOR_LIME, FONT_LARGE, 0.5, 0.6)
+        ('comment_lbl', '', COLOR_WHITE, FONT_MEDIUM, 0.5, 0.85)
     ],
     'buttons': [
-        ('clear_btn', '←', 'clear', 0.35, 0.85),
-        ('enter_btn', '→', 'enter', 0.65, 0.85),
-        ('exit_btn', 'Выйти', 'exit', 0.35, 0.85),
-        ('start_btn', 'Давай!', 'start', 0.35, 0.85)
+        ('clear_btn', '←', 'clear', LONG_BTN_PARAMS, 0.25, 0.7),
+        ('enter_btn', '→', 'enter', LONG_BTN_PARAMS, 0.75, 0.7),
+        ('exit_btn', 'Выйти', 'exit', BTN_PARAMS, 0.35, 0.85),
+        ('start_btn', 'Давай!', 'start', BTN_PARAMS, 0.35, 0.85)
     ],
     'canvas_lines': [
         (50, 350, 50, 20, 'stand'),
@@ -102,24 +110,23 @@ GAME_PAGE_DATA = {
     ]
 }
 
-
-
-
 GAME_MESSAGES = {
-    'right_answers': [
+    'success': [
         'Верно!',
         'Отлично!',
         'Так держать!',
         'Прямо в точку',
         'Угадал!'
     ],
-    'wrong_answers': [
+    'wrong': [
         'Мимо',
         'Не верно',
         'Не угадал',
         'Не-а',
         'Не то'
-    ]
+    ],
+    'win': '⬆⬆⬆\nСлово отгадано!\nХочешь сыграть снова?',
+    'lose': '⬆⬆⬆\nВсе попытки потрачены!\nХочешь сыграть снова?'
 }
 
 DELAY_MESSAGES = {
@@ -145,17 +152,14 @@ DELAY_MESSAGES = {
 }
 
 ERROR_MESSAGES = {
-    'same_base': 'Выбраны одинаковые системы счисления',
     'empty': 'В поле пусто',
-    'too_big': 'Слишком большое значение',
-    'wrong_2': 'В двоичной системе допускаются только цифры "0" и "1"',
-    'wrong_8': 'В восьмеричной системе допускаются только цифры от 0 до 7 включительно',
-    'wrong_10': 'В десятичной системе допускаются только цифры',
-    'wrong_16': 'В шестнадцатеричной системе допускаются только все цифры и буквы "ABCDEF"'
+    'too_many': 'Можно ввести только 1 символ',
+    'wrong_char': 'Допускаются только буквы русского алфавита',
+    'already_used': 'Эта буква уже использовалась!'
 }
 
 alphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'
-words = ['человек', 'работа', 'вопрос', 'сторона', 'страна', 'случай', 'голова', 'ребенок', 'система', 'отношение',
+words_data = ['человек', 'работа', 'вопрос', 'сторона', 'страна', 'случай', 'голова', 'ребенок', 'система', 'отношение',
 'женщина', 'деньги', 'машина', 'проблема', 'решение', 'история', 'власть', 'тысяча', 'возможность', 'результат',
 'область', 'статья', 'компания', 'группа', 'развитие', 'процесс', 'условие', 'средство', 'начало', 'уровень', 'минута',
 'качество', 'дорога', 'действие', 'государство', 'любовь', 'взгляд', 'общество', 'деятельность', 'организация',

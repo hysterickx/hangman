@@ -38,6 +38,8 @@ class GamePage(ctk.CTkFrame):
     def __init__(self, master, controller, page_name=None):
         super().__init__(master, fg_color=cfg.COLOR_DARK)
 
+        self.controller = controller
+
         self.canvas = ctk.CTkCanvas(
             self,
             bg = cfg.COLOR_DARK,
@@ -75,19 +77,19 @@ class GamePage(ctk.CTkFrame):
 
         cmd_map = {
             'clear': self.delete_char,
-            'enter': lambda: self.send_data(self.entry.get()),
+            'enter': lambda: self.send_data(self.entry.get().upper()),
             'exit': lambda: controller.handle_command('exit_app'),
             'start': lambda: controller.handle_command('start_app')
         }
 
         self.buttons = {}
         button_data = cfg.GAME_PAGE_DATA['buttons']
-        for name, text, cmd_key, relx, rely in button_data:
+        for name, text, cmd_key, cfg_key, relx, rely in button_data:
             button = ctk.CTkButton(
                 self,
                 text=text,
                 command=cmd_map[cmd_key],
-                **cfg.BTN_PARAMS
+                **cfg_key
             )
             button.place(relx=relx, rely=rely, anchor='c')
             self.buttons[name] = button
@@ -96,17 +98,55 @@ class GamePage(ctk.CTkFrame):
             self,
             **cfg.ENTRY_PARAMS
         )
-        self.entry.place(relx=0.5, rely=0.5, anchor='c')
+        self.entry.place(relx=0.5, rely=0.7, anchor='c')
 
     def delete_char(self):
         self.entry.delete(len(self.entry.get()) - 1)
 
+    def get_focus(self):
+        self.entry.focus()
+
     def send_data(self, user_input):
-        print('SSS')
+        self.controller.handle_command(
+            'transfer_data', user_input
+        )
 
-    #def update_ui(self):
+    def show_error(self, status):
+        error_message = CTkMessagebox(
+            app,
+            message=cfg.ERROR_MESSAGES[status],
+            **cfg.MSG_PARAMS
+        )
+        self.wait_window(error_message)
+        self.entry.delete(0, 'end')
+        self.get_focus()
+
+    def show_game_info(self, status, word, count, part):
+        self.labels['word_lbl'].configure(text=word)
+        self.labels['count_lbl'].configure(text=f'Попыток осталось\n{count}')
+        self.labels['comment_lbl'].configure(text=choice(cfg.GAME_MESSAGES[status]))
+        self.canvas.itemconfigure(part, state='normal')
+        self.entry.delete(0, 'end')
+        self.get_focus()
+
+    def show_win_info(self, word, count):
+        self.labels['word_lbl'].configure(text=word)
+        self.labels['count_lbl'].configure(text=f'Попыток осталось\n{count}')
+        self.labels['comment_lbl'].configure(text=cfg.GAME_MESSAGES['win'])
+
+    def show_lose_info(self, word, count):
+        self.labels['word_lbl'].configure(text=word)
+        self.labels['count_lbl'].configure(text=f'Попыток осталось\n{count}')
+        self.labels['comment_lbl'].configure(text=cfg.GAME_MESSAGES['lose'])
 
 
+
+    def update_ui(self, word):
+        self.canvas.itemconfigure("all", state="hidden")
+        self.buttons['exit_btn'].place_forget()
+        self.buttons['start_btn'].place_forget()
+        self.labels['comment_lbl'].configure(text='')
+        self.labels['word_lbl'].configure(text=word)
 
 
 class MessagePage(ctk.CTkFrame):
@@ -127,6 +167,64 @@ class MessagePage(ctk.CTkFrame):
         )
 
 
+class MainLogic:
+    def __init__(self):
+        self.current_word = ''
+        self.hidden_word = []
+        self.already_used = ''
+        self.count = 8
+        self.man_parts = ['stand', 'head', 'neck', 'left_hand', 'right_hand', 'body', 'left_leg', 'right_leg']
+
+    def check_input(self, user_input):
+        if len(user_input) == 0:
+            return 'empty'
+        if len(user_input) > 1:
+            return 'too_many'
+        if user_input not in cfg.alphabet:
+            return 'wrong_char'
+        if user_input in self.already_used:
+            return 'already_used'
+        return None
+
+    def change_word(self, user_input):
+        error_status = self.check_input(user_input)
+        if error_status:
+            return error_status, [], [], []
+
+        self.already_used += user_input
+        for idx, char in enumerate(self.current_word):
+            if char == user_input:
+                self.hidden_word[idx] = char
+
+        if user_input in self.current_word[1:-1] and '__' in self.hidden_word:
+            return 'success', " ".join(self.hidden_word), self.count, []
+
+        if user_input in self.current_word[1:-1] and '__' not in self.hidden_word:
+            return 'win', " ".join(self.hidden_word), self.count, []
+
+        if user_input not in self.current_word[1:-1] and self.count > 1:
+            self.count -= 1
+            man_part = self.man_parts.pop(0)
+            return 'wrong', " ".join(self.hidden_word), self.count, man_part
+
+        if user_input not in self.current_word[1:-1] and self.count == 1:
+            self.count -= 1
+            man_part = self.man_parts.pop(0)
+            return 'lose', " ".join(self.current_word), self.count, man_part
+
+    def update_variables(self):
+        self.current_word = choice(cfg.words_data).upper()
+        self.hidden_word = ['__' for char in self.current_word]
+        self.hidden_word[0] = self.current_word[0]
+        self.hidden_word[-1] = self.current_word[-1]
+        self.already_used = ''
+        self.count = 8
+        self.man_parts = ['stand', 'head', 'neck', 'left_hand', 'right_hand', 'body', 'left_leg', 'right_leg']
+        print(self.current_word)
+        print(self.hidden_word)
+        return self.hidden_word, self.count
+
+
 class MainApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -138,7 +236,7 @@ class MainApp(ctk.CTk):
 
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.pack(fill='both', expand=True)
-        #self.logic = MainLogic()
+        self.logic = MainLogic()
 
         self.pages = {}
         self.current_frame = None
@@ -170,17 +268,15 @@ class MainApp(ctk.CTk):
             self.current_frame.pack_forget()
         self.current_frame = self.pages[page_name]
         self.current_frame.pack(fill="both", expand=True)
-        #if page_name == 'GamePage':
-        #    self.current_frame.get_focus()
+        if page_name == 'GamePage':
+            self.current_frame.get_focus()
 
-    def transfer_data(self, page, info):
-        result = self.logic.check_input(page, info)
-        if result in cfg.ERROR_MESSAGES:
-            self.pages[page].show_error(result)
-        elif result in self.pages:
-            self.switch_to(result)
+    def transfer_data(self, user_input):
+        status, word, count, part = self.logic.change_word(user_input)
+        if status in cfg.ERROR_MESSAGES:
+            self.pages['GamePage'].show_error(status)
         else:
-            self.transfer_result(info, result)
+            self.pages['GamePage'].show_game_info(status, word, count, part)
 
     def transfer_result(self, user_input, result):
         self.pages['GamePage'].show_result(user_input, result)
@@ -193,7 +289,8 @@ class MainApp(ctk.CTk):
     def start_app(self):
         self.pages['MessagePage'].change_message('loading')
         self.switch_to('MessagePage')
-        self.pages['GamePage'].update_ui()
+        word, count = self.logic.update_variables()
+        self.pages['GamePage'].update_ui(word)
         self.after(3000, lambda: self.switch_to('GamePage'))
 
 
