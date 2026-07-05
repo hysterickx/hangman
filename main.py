@@ -100,10 +100,13 @@ class GamePage(ctk.CTkFrame):
         )
         self.entry.place(relx=0.5, rely=0.7, anchor='c')
 
+        self.entry.bind("<Return>", lambda event: self.send_data(self.entry.get().upper()))
+
     def delete_char(self):
         self.entry.delete(len(self.entry.get()) - 1)
 
-    def get_focus(self):
+    def clear_entry(self):
+        self.entry.delete(0, 'end')
         self.entry.focus()
 
     def send_data(self, user_input):
@@ -118,35 +121,39 @@ class GamePage(ctk.CTkFrame):
             **cfg.MSG_PARAMS
         )
         self.wait_window(error_message)
-        self.entry.delete(0, 'end')
-        self.get_focus()
+        self.clear_entry()
 
     def show_game_info(self, status, word, count, part):
         self.labels['word_lbl'].configure(text=word)
         self.labels['count_lbl'].configure(text=f'Попыток осталось\n{count}')
         self.labels['comment_lbl'].configure(text=choice(cfg.GAME_MESSAGES[status]))
         self.canvas.itemconfigure(part, state='normal')
-        self.entry.delete(0, 'end')
-        self.get_focus()
+        self.clear_entry()
 
-    def show_win_info(self, word, count):
-        self.labels['word_lbl'].configure(text=word)
+    def show_result_info(self, status, word, count, part):
+        self.entry.place_forget()
+        self.buttons['clear_btn'].place_forget()
+        self.buttons['enter_btn'].place_forget()
+        self.canvas.itemconfigure(part, state='normal')
+        self.labels['word_lbl'].configure(text=word, text_color=cfg.COLOR_LIME)
         self.labels['count_lbl'].configure(text=f'Попыток осталось\n{count}')
-        self.labels['comment_lbl'].configure(text=cfg.GAME_MESSAGES['win'])
+        self.labels['comment_lbl'].configure(text=cfg.GAME_MESSAGES[status])
+        self.labels['comment_lbl'].place(relx=0.5, rely=0.7)
+        self.buttons['exit_btn'].place(relx=0.35, rely=0.9, anchor='c')
+        self.buttons['start_btn'].place(relx=0.65, rely=0.9, anchor='c')
 
-    def show_lose_info(self, word, count):
-        self.labels['word_lbl'].configure(text=word)
-        self.labels['count_lbl'].configure(text=f'Попыток осталось\n{count}')
-        self.labels['comment_lbl'].configure(text=cfg.GAME_MESSAGES['lose'])
-
-
-
-    def update_ui(self, word):
-        self.canvas.itemconfigure("all", state="hidden")
+    def update_ui(self, word, count):
         self.buttons['exit_btn'].place_forget()
         self.buttons['start_btn'].place_forget()
+        self.canvas.itemconfigure("all", state="hidden")
+        self.buttons['clear_btn'].place(relx=0.25, rely=0.7, anchor='c')
+        self.buttons['enter_btn'].place(relx=0.75, rely=0.7, anchor='c')
+        self.entry.place(relx=0.5, rely=0.7, anchor='c')
+        self.clear_entry()
         self.labels['comment_lbl'].configure(text='')
-        self.labels['word_lbl'].configure(text=word)
+        self.labels['comment_lbl'].place(relx=0.5, rely=0.85, anchor='c')
+        self.labels['word_lbl'].configure(text=word, text_color=cfg.COLOR_WHITE)
+        self.labels['count_lbl'].configure(text=f'Попыток осталось:\n{count}')
 
 
 class MessagePage(ctk.CTkFrame):
@@ -180,7 +187,7 @@ class MainLogic:
             return 'empty'
         if len(user_input) > 1:
             return 'too_many'
-        if user_input not in cfg.alphabet:
+        if user_input not in cfg.ALPHABET:
             return 'wrong_char'
         if user_input in self.already_used:
             return 'already_used'
@@ -213,7 +220,7 @@ class MainLogic:
             return 'lose', " ".join(self.current_word), self.count, man_part
 
     def update_variables(self):
-        self.current_word = choice(cfg.words_data).upper()
+        self.current_word = choice(cfg.WORDS_DATA).upper()
         self.hidden_word = ['__' for char in self.current_word]
         self.hidden_word[0] = self.current_word[0]
         self.hidden_word[-1] = self.current_word[-1]
@@ -268,18 +275,17 @@ class MainApp(ctk.CTk):
             self.current_frame.pack_forget()
         self.current_frame = self.pages[page_name]
         self.current_frame.pack(fill="both", expand=True)
-        if page_name == 'GamePage':
-            self.current_frame.get_focus()
+        if self.current_frame == 'GamePage':
+            self.current_frame.clear_entry()
 
     def transfer_data(self, user_input):
         status, word, count, part = self.logic.change_word(user_input)
         if status in cfg.ERROR_MESSAGES:
             self.pages['GamePage'].show_error(status)
+        elif status in ('win', 'lose'):
+            self.pages['GamePage'].show_result_info(status, word, count, part)
         else:
             self.pages['GamePage'].show_game_info(status, word, count, part)
-
-    def transfer_result(self, user_input, result):
-        self.pages['GamePage'].show_result(user_input, result)
 
     def exit_app(self):
         self.pages['MessagePage'].change_message('farewell')
@@ -290,7 +296,7 @@ class MainApp(ctk.CTk):
         self.pages['MessagePage'].change_message('loading')
         self.switch_to('MessagePage')
         word, count = self.logic.update_variables()
-        self.pages['GamePage'].update_ui(word)
+        self.pages['GamePage'].update_ui(word, count)
         self.after(3000, lambda: self.switch_to('GamePage'))
 
 
