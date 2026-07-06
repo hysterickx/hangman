@@ -22,12 +22,12 @@ class StaticPages(ctk.CTkFrame):
             label.place(relx=relx, rely=rely, anchor='c')
 
         button_data = page_config['buttons']
-        for text, cmd_key, relx, rely in button_data:
+        for text, info, relx, rely in button_data:
             button = ctk.CTkButton(
                 self,
                 text=text,
                 command=partial(
-                    controller.handle_command, cmd_key
+                    controller.handle_command, page_name, info
                 ),
                 **cfg.BTN_PARAMS
             )
@@ -75,11 +75,18 @@ class GamePage(ctk.CTkFrame):
             label.place(relx=relx, rely=rely, anchor='c')
             self.labels[name] = label
 
+        self.entry = ctk.CTkEntry(
+            self,
+            **cfg.ENTRY_PARAMS
+        )
+        self.entry.place(relx=0.5, rely=0.7, anchor='c')
+        self.entry.bind("<Return>", lambda event=None: self.send_data(self.entry.get().upper()))
+
         cmd_map = {
             'clear': self.delete_char,
             'enter': lambda: self.send_data(self.entry.get().upper()),
-            'exit': lambda: controller.handle_command('exit_app'),
-            'start': lambda: controller.handle_command('start_app')
+            'exit': lambda: self.send_data('exit'),
+            'start': lambda: self.send_data('start')
         }
 
         self.buttons = {}
@@ -94,14 +101,6 @@ class GamePage(ctk.CTkFrame):
             button.place(relx=relx, rely=rely, anchor='c')
             self.buttons[name] = button
 
-        self.entry = ctk.CTkEntry(
-            self,
-            **cfg.ENTRY_PARAMS
-        )
-        self.entry.place(relx=0.5, rely=0.7, anchor='c')
-
-        self.entry.bind("<Return>", lambda event: self.send_data(self.entry.get().upper()))
-
     def delete_char(self):
         self.entry.delete(len(self.entry.get()) - 1)
 
@@ -109,9 +108,9 @@ class GamePage(ctk.CTkFrame):
         self.entry.delete(0, 'end')
         self.entry.focus()
 
-    def send_data(self, user_input):
+    def send_data(self, info):
         self.controller.handle_command(
-            'transfer_data', user_input
+            'GamePage', info
         )
 
     def show_error(self, status):
@@ -125,8 +124,12 @@ class GamePage(ctk.CTkFrame):
 
     def show_game_info(self, status, word, count, part):
         self.labels['word_lbl'].configure(text=word)
-        self.labels['count_lbl'].configure(text=f'Попыток осталось\n{count}')
-        self.labels['comment_lbl'].configure(text=choice(cfg.GAME_MESSAGES[status]))
+        self.labels['count_lbl'].configure(
+            text=f'Попыток осталось\n{count}'
+        )
+        self.labels['comment_lbl'].configure(
+            text=choice(cfg.GAME_MESSAGES[status])
+        )
         self.canvas.itemconfigure(part, state='normal')
         self.clear_entry()
 
@@ -135,25 +138,47 @@ class GamePage(ctk.CTkFrame):
         self.buttons['clear_btn'].place_forget()
         self.buttons['enter_btn'].place_forget()
         self.canvas.itemconfigure(part, state='normal')
-        self.labels['word_lbl'].configure(text=word, text_color=cfg.COLOR_LIME)
-        self.labels['count_lbl'].configure(text=f'Попыток осталось\n{count}')
-        self.labels['comment_lbl'].configure(text=cfg.GAME_MESSAGES[status])
-        self.labels['comment_lbl'].place(relx=0.5, rely=0.7)
-        self.buttons['exit_btn'].place(relx=0.35, rely=0.9, anchor='c')
-        self.buttons['start_btn'].place(relx=0.65, rely=0.9, anchor='c')
+        self.labels['word_lbl'].configure(
+            text=word, text_color=cfg.COLOR_LIME
+        )
+        self.labels['count_lbl'].configure(
+            text=f'Попыток осталось\n{count}'
+        )
+        self.labels['comment_lbl'].configure(
+            text=cfg.GAME_MESSAGES[status]
+        )
+        self.labels['comment_lbl'].place(
+            relx=0.5, rely=0.7
+        )
+        self.buttons['exit_btn'].place(
+            relx=0.35, rely=0.9, anchor='c'
+        )
+        self.buttons['start_btn'].place(
+            relx=0.65, rely=0.9, anchor='c'
+        )
 
     def update_ui(self, word, count):
         self.buttons['exit_btn'].place_forget()
         self.buttons['start_btn'].place_forget()
         self.canvas.itemconfigure("all", state="hidden")
-        self.buttons['clear_btn'].place(relx=0.25, rely=0.7, anchor='c')
-        self.buttons['enter_btn'].place(relx=0.75, rely=0.7, anchor='c')
+        self.buttons['clear_btn'].place(
+            relx=0.25, rely=0.7, anchor='c'
+        )
+        self.buttons['enter_btn'].place(
+            relx=0.75, rely=0.7, anchor='c'
+        )
         self.entry.place(relx=0.5, rely=0.7, anchor='c')
         self.clear_entry()
         self.labels['comment_lbl'].configure(text='')
-        self.labels['comment_lbl'].place(relx=0.5, rely=0.85, anchor='c')
-        self.labels['word_lbl'].configure(text=word, text_color=cfg.COLOR_WHITE)
-        self.labels['count_lbl'].configure(text=f'Попыток осталось:\n{count}')
+        self.labels['comment_lbl'].place(
+            relx=0.5, rely=0.85, anchor='c'
+        )
+        self.labels['word_lbl'].configure(
+            text=word, text_color=cfg.COLOR_WHITE
+        )
+        self.labels['count_lbl'].configure(
+            text=f'Попыток осталось:\n{count}'
+        )
 
 
 class MessagePage(ctk.CTkFrame):
@@ -180,10 +205,10 @@ class MainLogic:
         self.hidden_word = []
         self.already_used = ''
         self.count = 8
-        self.man_parts = ['stand', 'head', 'neck', 'left_hand', 'right_hand', 'body', 'left_leg', 'right_leg']
+        self.man_parts = cfg.MAN_PARTS.copy()
 
     def check_input(self, user_input):
-        if len(user_input) == 0:
+        if not user_input:
             return 'empty'
         if len(user_input) > 1:
             return 'too_many'
@@ -196,39 +221,44 @@ class MainLogic:
     def change_word(self, user_input):
         error_status = self.check_input(user_input)
         if error_status:
-            return error_status, [], [], []
+            return error_status, None, None, None
+
+        current = self.current_word
+        hidden = self.hidden_word
+        current_cut = self.current_word[1:-1]
 
         self.already_used += user_input
-        for idx, char in enumerate(self.current_word):
+        for idx, char in enumerate(current):
             if char == user_input:
-                self.hidden_word[idx] = char
+                hidden[idx] = char
 
-        if user_input in self.current_word[1:-1] and '__' in self.hidden_word:
-            return 'success', " ".join(self.hidden_word), self.count, []
+        hidden_str = " ".join(self.hidden_word)
 
-        if user_input in self.current_word[1:-1] and '__' not in self.hidden_word:
-            return 'win', " ".join(self.hidden_word), self.count, []
+        if user_input in current_cut and '__' in hidden:
+            return 'success', hidden_str, self.count, None
 
-        if user_input not in self.current_word[1:-1] and self.count > 1:
+        if user_input in current_cut and '__' not in hidden:
+            return 'win', hidden_str, self.count, None
+
+        if user_input not in current_cut and self.count > 1:
             self.count -= 1
             man_part = self.man_parts.pop(0)
-            return 'wrong', " ".join(self.hidden_word), self.count, man_part
+            return 'wrong', hidden_str, self.count, man_part
 
-        if user_input not in self.current_word[1:-1] and self.count == 1:
+        if user_input not in current_cut and self.count == 1:
             self.count -= 1
             man_part = self.man_parts.pop(0)
-            return 'lose', " ".join(self.current_word), self.count, man_part
+            return 'lose', " ".join(current), self.count, man_part
 
     def update_variables(self):
         self.current_word = choice(cfg.WORDS_DATA).upper()
-        self.hidden_word = ['__' for char in self.current_word]
+        self.hidden_word = ['__'] * len(self.current_word)
         self.hidden_word[0] = self.current_word[0]
         self.hidden_word[-1] = self.current_word[-1]
         self.already_used = ''
         self.count = 8
-        self.man_parts = ['stand', 'head', 'neck', 'left_hand', 'right_hand', 'body', 'left_leg', 'right_leg']
+        self.man_parts = cfg.MAN_PARTS.copy()
         print(self.current_word)
-        print(self.hidden_word)
         return self.hidden_word, self.count
 
 
@@ -262,30 +292,48 @@ class MainApp(ctk.CTk):
             )
         self.switch_to("GreetingsPage")
 
-    def handle_command(self, target, *args, **kwargs):
-        if hasattr(self, target):
-            method = getattr(self, target)
-            if callable(method):
-                method(*args, **kwargs)
-                return
-        self.switch_to(target)
+    def handle_command(self, page, info, *args, **kwargs):
+        router = {
+            ('GreetingsPage', 'exit'):  self.exit_app,
+            ('GreetingsPage', 'next'):  lambda: self.switch_to('RulesPage'),
+
+            ('RulesPage', 'exit'):      self.exit_app,
+            ('RulesPage', 'start'):     self.start_app,
+
+            ('GamePage', 'exit'):       self.exit_app,
+            ('GamePage', 'start'):      self.start_app
+        }
+
+        action = router.get((page, info))
+
+        if action:
+            action(*args, **kwargs)
+            return
+
+        if page == 'GamePage':
+            self.transfer_data(info)
 
     def switch_to(self, page_name):
         if self.current_frame:
             self.current_frame.pack_forget()
         self.current_frame = self.pages[page_name]
         self.current_frame.pack(fill="both", expand=True)
-        if self.current_frame == 'GamePage':
+        if page_name == 'GamePage':
             self.current_frame.clear_entry()
 
     def transfer_data(self, user_input):
-        status, word, count, part = self.logic.change_word(user_input)
+        status, word, count, part = \
+            self.logic.change_word(user_input)
         if status in cfg.ERROR_MESSAGES:
             self.pages['GamePage'].show_error(status)
         elif status in ('win', 'lose'):
-            self.pages['GamePage'].show_result_info(status, word, count, part)
+            self.pages['GamePage'].show_result_info(
+                status, word, count, part
+            )
         else:
-            self.pages['GamePage'].show_game_info(status, word, count, part)
+            self.pages['GamePage'].show_game_info(
+                status, word, count, part
+            )
 
     def exit_app(self):
         self.pages['MessagePage'].change_message('farewell')
