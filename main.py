@@ -27,7 +27,7 @@ class StaticPages(ctk.CTkFrame):
                 self,
                 text=text,
                 command=partial(
-                    controller.handle_command, page_name, info
+                    controller.handle_info, page_name, info
                 ),
                 **cfg.BTN_PARAMS
             )
@@ -42,12 +42,12 @@ class GamePage(ctk.CTkFrame):
 
         self.canvas = ctk.CTkCanvas(
             self,
-            bg = cfg.COLOR_DARK,
-            highlightthickness = 0
+            bg=cfg.COLOR_DARK,
+            highlightthickness=0
         )
         self.canvas.place(
-            relx = 0.05, rely = 0.05,
-            relwidth = 0.4, relheight = 0.5
+            relx=0.05, rely=0.05,
+            relwidth=0.4, relheight=0.5
         )
 
         canvas_data = cfg.GAME_PAGE_DATA['canvas_lines']
@@ -80,11 +80,18 @@ class GamePage(ctk.CTkFrame):
             **cfg.ENTRY_PARAMS
         )
         self.entry.place(relx=0.5, rely=0.7, anchor='c')
-        self.entry.bind("<Return>", lambda event=None: self.send_data(self.entry.get().upper()))
+        self.entry.bind(
+            "<Return>",
+            lambda event=None: self.send_data(
+                self.entry.get().upper()
+            )
+        )
 
         cmd_map = {
             'clear': self.delete_char,
-            'enter': lambda: self.send_data(self.entry.get().upper()),
+            'enter': lambda: self.send_data(
+                self.entry.get().upper()
+            ),
             'exit': lambda: self.send_data('exit'),
             'start': lambda: self.send_data('start')
         }
@@ -109,7 +116,7 @@ class GamePage(ctk.CTkFrame):
         self.entry.focus()
 
     def send_data(self, info):
-        self.controller.handle_command(
+        self.controller.handle_info(
             'GamePage', info
         )
 
@@ -185,16 +192,16 @@ class MessagePage(ctk.CTkFrame):
     def __init__(self, master, controller, page_name=None):
         super().__init__(master, fg_color=cfg.COLOR_DARK)
 
-        self.label = ctk.CTkLabel(
+        self.message_lbl = ctk.CTkLabel(
             self,
             text='',
             text_color=cfg.COLOR_LIME,
             font=cfg.FONT_LARGE
         )
-        self.label.place(relx=0.5, rely=0.5, anchor='c')
+        self.message_lbl.place(relx=0.5, rely=0.5, anchor='c')
 
     def change_message(self, stage):
-        self.label.configure(
+        self.message_lbl.configure(
             text=choice(cfg.DELAY_MESSAGES[stage])
         )
 
@@ -292,27 +299,6 @@ class MainApp(ctk.CTk):
             )
         self.switch_to("GreetingsPage")
 
-    def handle_command(self, page, info, *args, **kwargs):
-        router = {
-            ('GreetingsPage', 'exit'):  self.exit_app,
-            ('GreetingsPage', 'next'):  lambda: self.switch_to('RulesPage'),
-
-            ('RulesPage', 'exit'):      self.exit_app,
-            ('RulesPage', 'start'):     self.start_app,
-
-            ('GamePage', 'exit'):       self.exit_app,
-            ('GamePage', 'start'):      self.start_app
-        }
-
-        action = router.get((page, info))
-
-        if action:
-            action(*args, **kwargs)
-            return
-
-        if page == 'GamePage':
-            self.transfer_data(info)
-
     def switch_to(self, page_name):
         if self.current_frame:
             self.current_frame.pack_forget()
@@ -320,6 +306,22 @@ class MainApp(ctk.CTk):
         self.current_frame.pack(fill="both", expand=True)
         if page_name == 'GamePage':
             self.current_frame.clear_entry()
+
+    def handle_info(self, page, info):
+        go_to_rules = partial(self.switch_to, 'RulesPage')
+
+        router = {
+            ('GreetingsPage', 'exit'):  self.exit_app,
+            ('GreetingsPage', 'next'):  go_to_rules,
+            ('RulesPage', 'exit'):      self.exit_app,
+            ('RulesPage', 'start'):     self.start_app,
+            ('GamePage', 'exit'):       self.exit_app,
+            ('GamePage', 'start'):      self.start_app
+        }
+
+        if method := router.get((page, info)):
+            return method()
+        self.transfer_data(info)
 
     def transfer_data(self, user_input):
         status, word, count, part = \
